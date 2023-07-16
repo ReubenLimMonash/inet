@@ -33,6 +33,8 @@ class INET_API LognormalRicianFading : public FreeSpacePathLoss
     double sigma_b;
     double K_min;
     double K_max;
+    double K_min_U2U;
+    double K_max_U2U;
 
   protected:
     virtual void initialize(int stage) override;

@@ -153,11 +153,9 @@ void Ieee80211Mac::handleMgmtPacket(Packet *packet)
     header->setReceiverAddress(packet->getTag<MacAddressReq>()->getDestAddress());
     if (mib->mode == Ieee80211Mib::INFRASTRUCTURE && mib->bssStationData.stationType == Ieee80211Mib::ACCESS_POINT)
         header->setAddress3(mib->bssData.bssid);
-    std::cout << "Hi" << std::endl;
     packet->insertAtFront(header);
     packet->insertAtBack(makeShared<Ieee80211MacTrailer>());
     processUpperFrame(packet, header);
-    std::cout << "Bye" << std::endl;
 }
 
 void Ieee80211Mac::handleUpperPacket(Packet *packet)
@@ -168,12 +166,14 @@ void Ieee80211Mac::handleUpperPacket(Packet *packet)
         details.setReason(OTHER_PACKET_DROP);
         // Save packet drop detail to file. Added on 14/11/2022
         if (packet->findTag<SnirInd>()){
-            std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "OTHER_PACKET_DROP");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (packet->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "OTHER_PACKET_DROP");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         emit(packetDroppedSignal, packet, &details);
         delete packet;
@@ -191,12 +191,14 @@ void Ieee80211Mac::handleUpperPacket(Packet *packet)
                 details.setReason(OTHER_PACKET_DROP);
                 // Save packet drop detail to file. Added on 14/11/2022
                 if (packet->findTag<SnirInd>()){
-                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "OTHER_PACKET_DROP");
-                    std::ofstream out(csvFilePath, std::ios::app);
-                    out << packetInfo << endl;
-                    out.close();
+                    if (packet->getTag<SnirInd>()->getRecordPacket()){
+                        std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                        std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                        std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "OTHER_PACKET_DROP");
+                        std::ofstream out(csvFilePath, std::ios::app);
+                        out << packetInfo << endl;
+                        out.close();
+                    }
                 }
                 emit(packetDroppedSignal, packet, &details);
                 delete packet;

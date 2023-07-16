@@ -156,6 +156,8 @@ Packet *ErrorModelBase::computeCorruptedPacket(const ISnir *snir) const
     double U2GDistance = NaN;
     double U2GBer = NaN;
     double U2UBer = NaN;
+    int retryCount = 0;
+    bool recordPacket = true;
     W rssi = W(NaN);
     std::string fileName = "NaN";
     if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
@@ -170,8 +172,8 @@ Packet *ErrorModelBase::computeCorruptedPacket(const ISnir *snir) const
             U2USinr = snirInd->getU2USnir();
             U2GDistance = snirInd->getU2GDistance();
             fileName = snirInd->getFileName();
-            // std::cout << queueingTime << std::endl;
-            // std::cout << backoffTime << std::endl;
+            retryCount = snirInd->getRetryCount();
+            recordPacket = snirInd->getRecordPacket();
         }
         else{
             std::cout << "No SnirInd!" << std::endl;
@@ -203,6 +205,8 @@ Packet *ErrorModelBase::computeCorruptedPacket(const ISnir *snir) const
         snirInd->setU2GSnir(U2GSinr);
         snirInd->setU2USnir(U2USinr);
         snirInd->setU2GDistance(U2GDistance);
+        snirInd->setRetryCount(retryCount);
+        snirInd->setRecordPacket(recordPacket);
         auto signalPowerInd = receivedPacket->addTagIfAbsent<SignalPowerInd>();
         signalPowerInd->setPower(rssi);
         auto errorRateInd = receivedPacket->addTagIfAbsent<ErrorRateInd>();

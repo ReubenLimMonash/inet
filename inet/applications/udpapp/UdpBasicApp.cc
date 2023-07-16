@@ -60,13 +60,15 @@ void UdpBasicApp::initialize(int stage)
         m_CSVFullPath = dir / file ;
         // Write header for Tx CSV
         std::ofstream out(m_CSVFullPath);
-        out << "TxTime," << "Packet_Name,"<< "Packet_Seq," << "Bytes," << "Dest_Addr," << std::endl;
+        out << "TxTime," << "Packet_Seq," << "Bytes," << "Dest_Addr," << "Packet_Name," << std::endl;
         out.close();
         // Write header for packet drop CSV
         std::string fileName = m_CSVFullPath.string();
         std::ofstream out_pd(fileName.substr(0,fileName.length()-6) + "PacketDrop.csv");
-        out_pd << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "RSSI," << "U2G_SINR," << "U2U_SINR," << "U2G_BER," << "U2U_BER,"
-               << "Delay," << "Queueing_Time," << "Backoff_Time," << "U2G_Distance," << "Has_Bit_Error," << "Packet_Drop_Reason" << std::endl;
+        // out_pd << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "RSSI," << "U2G_SINR," << "U2U_SINR," << "U2G_BER," << "U2U_BER,"
+        //        << "Delay," << "Queueing_Time," << "Backoff_Time," << "U2G_Distance," << "Has_Bit_Error," << "Packet_Drop_Reason" << std::endl;
+        // MINIMISE DATA MODE (to revert, search for the term: MINIMISE DATA MODE)
+        out_pd << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "Packet_Drop_Reason" << std::endl;
         out_pd.close();
         if (stopTime >= CLOCKTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
@@ -145,15 +147,28 @@ void UdpBasicApp::sendPacket()
     std::string fileName = m_CSVFullPath.string();
     packet->addTagIfAbsent<SnirInd>()->setFileName(fileName.substr(0,fileName.length()-6)); // Update the CSV file path to this current module's (leave out App[0]-Tx.csv)
 
+    int numPacketRecord = par("numPacketRecord");
+    if ((numPacketRecord == -1) | (numSent < numPacketRecord)){
+        packet->addTagIfAbsent<SnirInd>()->setRecordPacket(true); // Set flag to record packet in CSV
+        // Let's log the packet sending application
+        std::stringstream os;
+        // If this is the first packet being recorded,then include packetName, else exclude. This is to save space
+        if (numSent == 0){
+            os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str() << "," << packetName;
+        }
+        else{
+            os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str();
+        }
+        std::ofstream out(m_CSVFullPath, std::ios::app);
+        out << os.str() << endl;
+        out.close();
+    }
+    else{
+        packet->addTagIfAbsent<SnirInd>()->setRecordPacket(false); // Set flag to NOT record packet in CSV
+    }
+
     emit(packetSentSignal, packet);
     socket.sendTo(packet, destAddr, destPort);
-
-    // Let's log the packet sending application
-    std::stringstream os;
-    os << now << "," << packetName << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str();
-    std::ofstream out(m_CSVFullPath, std::ios::app);
-    out << os.str() << endl;
-    out.close();
 
     numSent++;
 }
@@ -283,7 +298,7 @@ void UdpBasicApp::processPacket(Packet *pk)
     emit(packetReceivedSignal, pk);
     EV_INFO << "Received packet: " << UdpSocket::getReceivedPacketInfo(pk) << endl;
     std::ofstream out(m_CSVFullPath, std::ios::app);
-    out << UdpSocket::getReceivedPacketInfoCSV(pk) << endl;
+    out << UdpSocket::getReceivedPacketInfoCSV(pk, numReceived) << endl;
     out.close();
     delete pk;
     numReceived++;

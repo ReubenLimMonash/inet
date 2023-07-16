@@ -105,16 +105,20 @@ const IReceptionResult *FlatReceiverBase::computeReceptionResult(const IListenin
     errorRateInd->setSymbolErrorRate(errorModel ? errorModel->computeSymbolErrorRate(snir, IRadioSignal::SIGNAL_PART_WHOLE) : 0.0);
 
     // Distinguish between BER for U2G and U2U links
-    // If previous node is GCS, and the packet name is CNC..., the SINR calculated is for G2U link
     auto snirInd = const_cast<Packet *>(receptionResult->getPacket())->addTagIfAbsent<SnirInd>();
     std::string filename = snirInd->getFileName();
     std::string packetName = const_cast<Packet *>(receptionResult->getPacket())->getName();
     if (filename.compare(0,3,"NaN") != 0) { // If not NaN
+        // If previous node is GCS, and the packet name is CNC..., the SINR calculated is for G2U link
         if ((filename.compare(filename.length()-4, 3, "GCS") == 0) && (packetName.compare(0, 3, "CNC") == 0)){
             errorRateInd->setU2GBer(ber);
         }
         // If previous node is gateway UAV, and the packet name is not CNC..., the SINR calculated is for U2G link
         else if ((filename.compare(filename.length()-3, 2, "GW") == 0) && (packetName.compare(0, 3, "CNC") != 0)){
+            errorRateInd->setU2GBer(ber);
+        }
+        // If packet is GatewayVideo, the link is U2G
+        else if (packetName.compare(0, 12, "GatewayVideo") == 0){
             errorRateInd->setU2GBer(ber);
         }
         else {

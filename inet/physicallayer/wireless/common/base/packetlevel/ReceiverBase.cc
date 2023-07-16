@@ -76,25 +76,43 @@ const IReceptionResult *ReceiverBase::computeReceptionResult(const IListening *l
         isReceptionSuccessful &= decision->isReceptionSuccessful();
     auto packet = computeReceivedPacket(snir, isReceptionSuccessful);
     auto signalPower = computeSignalPower(listening, snir, interference);
-    if (!std::isnan(signalPower.get())) {
-        auto signalPowerInd = packet->addTagIfAbsent<SignalPowerInd>();
-        signalPowerInd->setPower(signalPower);
-    }
+    // 16/04/2023 Changed to only record RSSI for G2U / U2G links
+    // if (!std::isnan(signalPower.get())) {
+    //     auto signalPowerInd = packet->addTagIfAbsent<SignalPowerInd>();
+    //     signalPowerInd->setPower(signalPower);
+    // }
     // Using the FileName tag of packets to get the sender name (get previous node)
     // ASSUMING AT THIS POINT, THE CURRENT NODE HAS NOT UPDATED THE fileName TAG YET
     auto snirInd = packet->addTagIfAbsent<SnirInd>();
     std::string filename = snirInd->getFileName();
     std::string packetName = packet->getName();
-    // If previous node is GCS, and the packet name is CNC..., the SINR calculated is for G2U link
     if (filename.compare(0,3,"NaN") != 0) { // If not NaN
+        // If previous node is GCS, and the packet name is CNC..., the SINR calculated is for G2U link
         if ((filename.compare(filename.length()-4, 3, "GCS") == 0) && (packetName.compare(0, 3, "CNC") == 0)){
             snirInd->setU2GSnir(snir->getMin());
             snirInd->setU2GDistance(distance);
+            if (!std::isnan(signalPower.get())) {
+                auto signalPowerInd = packet->addTagIfAbsent<SignalPowerInd>();
+                signalPowerInd->setPower(signalPower);
+            }
         }
         // If previous node is gateway UAV, and the packet name is not CNC..., the SINR calculated is for U2G link
         else if ((filename.compare(filename.length()-3, 2, "GW") == 0) && (packetName.compare(0, 3, "CNC") != 0)){
             snirInd->setU2GSnir(snir->getMin());
             snirInd->setU2GDistance(distance);
+            if (!std::isnan(signalPower.get())) {
+                auto signalPowerInd = packet->addTagIfAbsent<SignalPowerInd>();
+                signalPowerInd->setPower(signalPower);
+            }
+        }
+        // If packet is GatewayVideo, the link is U2G
+        else if (packetName.compare(0, 12, "GatewayVideo") == 0){
+            snirInd->setU2GSnir(snir->getMin());
+            snirInd->setU2GDistance(distance);
+            if (!std::isnan(signalPower.get())) {
+                auto signalPowerInd = packet->addTagIfAbsent<SignalPowerInd>();
+                signalPowerInd->setPower(signalPower);
+            }
         }
         else {
             snirInd->setU2USnir(snir->getMin());
@@ -139,6 +157,8 @@ Packet *ReceiverBase::computeReceivedPacket(const ISnir *snir, bool isReceptionS
     double ber = NaN;
     double U2GBer = NaN;
     double U2UBer = NaN;
+    int retryCount = 0;
+    bool recordPacket = true;
     std::string fileName = "NaN";
     // Checking for queueing time and other stats
     if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
@@ -152,8 +172,8 @@ Packet *ReceiverBase::computeReceivedPacket(const ISnir *snir, bool isReceptionS
             U2USinr = snirInd->getU2USnir();
             U2GDistance = snirInd->getU2GDistance();
             fileName = snirInd->getFileName();
-            // std::cout << queueingTime << std::endl;
-            // std::cout << backoffTime << std::endl;
+            retryCount = snirInd->getRetryCount();
+            recordPacket = snirInd->getRecordPacket();
         }
         else{
             std::cout << "No SnirInd!" << std::endl;
@@ -183,6 +203,8 @@ Packet *ReceiverBase::computeReceivedPacket(const ISnir *snir, bool isReceptionS
         snirInd->setU2GSnir(U2GSinr);
         snirInd->setU2USnir(U2USinr);
         snirInd->setU2GDistance(U2GDistance);
+        snirInd->setRetryCount(retryCount);
+        snirInd->setRecordPacket(recordPacket);
         auto signalPowerInd = receivedPacket->addTagIfAbsent<SignalPowerInd>();
         signalPowerInd->setPower(rssi);
         auto errorRateInd = receivedPacket->addTagIfAbsent<ErrorRateInd>();

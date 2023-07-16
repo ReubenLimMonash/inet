@@ -50,6 +50,7 @@ simple UdpBasicApp like IApp
         bool joinLocalMulticastGroups = default(false); // if true, makes the socket receive packets from all multicast groups set on local interfaces
         string csvFileName = default("");
         string csvFilePath = default("");
+        int numPacketRecord = default(-1); // The number of packets to record in CSV. -1 for record all
         
         @display("i=block/app");
         @lifecycleSupport;

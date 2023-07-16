@@ -366,6 +366,7 @@ std::string UdpSocket::getReceivedPacketInfoCSV(Packet *pk)
     double U2GDistance = snirInd->getU2GDistance();
     double queueingTime = snirInd->getQueueingTime();
     double backoffTime = snirInd->getBackoffPeriod();
+    int retryCount = snirInd->getRetryCount();
     // auto test = pk->getTag<SnirInd>()->getTest();
     // std::cout << "Queueing Time Tag :" << std::endl;
     // std::cout << queueingTime << std::endl;
@@ -375,7 +376,7 @@ std::string UdpSocket::getReceivedPacketInfoCSV(Packet *pk)
     std::stringstream os;
     os << now << "," << packetCreationTime << "," <<  packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << ",";
     os << U2USnir << "," << U2GBer << "," << U2UBer << "," << srcAddr.str() << "," << destAddr.str() << ",";
-    os << hopCount << "," << now - packetCreationTime << "," << queueingTime << "," << backoffTime << "," << U2GDistance;
+    os << hopCount << "," << now - packetCreationTime << "," << queueingTime << "," << backoffTime << "," << U2GDistance << "," << retryCount;
     return os.str();
 }
 

@@ -1,0 +1,7 @@
+*.out
+*.sca
+*.vec
+*.so
+libINET.so
+libINET_dbg.so
+

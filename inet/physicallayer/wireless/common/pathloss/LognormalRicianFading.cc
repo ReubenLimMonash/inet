@@ -23,7 +23,9 @@ LognormalRicianFading::LognormalRicianFading() :
     sigma_a(11.25),
     sigma_b(0.08),
     K_min(7.8),
-    K_max(17.5)
+    K_max(17.5),
+    K_min_U2U(-1.0),
+    K_max_U2U(-1.0)
 {
 }
 
@@ -40,8 +42,16 @@ void LognormalRicianFading::initialize(int stage)
         alpha_max = par("alpha_max");
         sigma_a = par("sigma_a");
         sigma_b = par("sigma_b");
-        K_min = par("K_min");
-        K_max = par("K_max");
+        K_min = par("K_min"); // in dB
+        K_max = par("K_max"); // in dB
+        K_min_U2U = par("K_min_U2U"); // in dB
+        K_max_U2U = par("K_max_U2U"); // in dB
+        if (K_min_U2U == -1) {
+            K_min_U2U = K_min;
+        }
+        if (K_max_U2U == -1) {
+            K_max_U2U = K_max;
+        }
     }
 }
 
@@ -108,7 +118,7 @@ double LognormalRicianFading::computeCompositePathLoss(mps propagationSpeed, Hz 
     if ((height == 0) && (distance <= m(5))) {
         // This is a U2U transmission
         double Alpha = alpha_min;
-        double K = math::dB2fraction(K_max); // For U2U, Rician K = K_max
+        double K = math::dB2fraction(K_max_U2U); // For U2U, Rician K = K_max_U2U
         double c = 1.0 / (2.0 * (K + 1));
         double x = normal(0, 1);
         double y = normal(0, 1);
@@ -122,7 +132,9 @@ double LognormalRicianFading::computeCompositePathLoss(mps propagationSpeed, Hz 
         double theta = theta_d(distance, rx_pos, tx_pos); // Elevation angle between Tx and Rx
         double Alpha = (alpha_min - alpha_max) * plos + alpha_max; // Path Loss Exponent
         double Sigma = math::dB2fraction(sigma_a * exp(- sigma_b * theta)); // Shadowing logarithmic std dev
-        double K = math::dB2fraction(K_min * exp(log(K_max / K_min) * pow(plos,2))); // Rician K factor
+        double K_min_pow = math::dB2fraction(K_min); // K_min should be in dB
+        double K_max_pow = math::dB2fraction(K_max); // K_max should be in dB
+        double K = K_min_pow * exp(log(K_max_pow / K_min_pow) * pow(plos,2)); // Rician K factor
 
         // Then, compute the path loss using the parameters
         double c = 1.0 / (2.0 * (K + 1));
@@ -162,7 +174,13 @@ double LognormalRicianFading::PLoS(const Coord& receiver, const Coord& transmitt
 
     double delta_h = transmitter.z - receiver.z; // Difference in height between receiver and transmitter
     double r = sqrt(pow(transmitter.x - receiver.x, 2) + pow(transmitter.y - receiver.y, 2)); // horizontal distance between Tx and Rx (m)
-    double pow_factor = 2 * r * sqrt(a * b / M_PI) + c;
+    // Use the following pow_factor is assuming PPP building dist.
+    // Ref: "Blockage Modeling for Inter-layer UAVs ..."
+    // double pow_factor = 2 * r * sqrt(a * b / M_PI) + a;
+    // Use the following pow_factor if assuming ITU-R's assumption
+    // Ref: RECOMMENDATION ITU-R P.1410-5
+    double pow_factor = r * sqrt(a * b);
+    
     double h1, h2, p;
     if (delta_h == 0)  
     {

@@ -20,5 +20,7 @@ module LognormalRicianFading extends FreeSpacePathLoss
         double sigma_b = default(0.08);
         double K_min = default(7.8);
         double K_max = default(17.5);
+        double K_min_U2U = default(-1.0);
+        double K_max_U2U = default(-1.0);
         @class(LognormalRicianFading);
 }

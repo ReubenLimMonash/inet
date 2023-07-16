@@ -948,15 +948,18 @@ void Udp::processUDPPacket(Packet *udpPacket)
         details.setReason(INCORRECTLY_RECEIVED);
         emit(packetDroppedSignal, udpPacket, &details);
         numDroppedBadChecksum++;
-        // Save packet drop detail to file
-        if (udpPacket->findTag<SnirInd>()){
-            std::string packetDropCSV = udpPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(udpPacket, "INCORRECTLY_RECEIVED");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
-        }
+        // NOTE: 14/07/2023 Stop recording incorrectly received packets to save memory
+        // // Save packet drop detail to file
+        // if (udpPacket->findTag<SnirInd>()){
+        //     if (udpPacket->getTag<SnirInd>()->getRecordPacket()){
+        //         std::string packetDropCSV = udpPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+        //         std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+        //         std::string packetInfo = MacProtocolBase::getPacketInfoCSV(udpPacket, "INCORRECTLY_RECEIVED");
+        //         std::ofstream out(csvFilePath, std::ios::app);
+        //         out << packetInfo << endl;
+        //         out.close();
+        //     }
+        // }
         delete udpPacket;
         return;
     }
@@ -1176,18 +1179,21 @@ void Udp::processICMPv4Error(Packet *packet)
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
         emit(packetDroppedSignal, packet, &details);
-        // Save packet drop detail to file
-        std::string packetName = packet->getName();
-        if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
-            if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
-            }
-        }
+        // NOTE: 14/07/2023 Stop recording incorrectly received packets to save memory
+        // // Save packet drop detail to file
+        // std::string packetName = packet->getName();
+        // if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
+        //     if (packet->findTag<SnirInd>()){
+        //         if (packet->getTag<SnirInd>()->getRecordPacket()){
+        //             std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+        //             std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+        //             std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
+        //             std::ofstream out(csvFilePath, std::ios::app);
+        //             out << packetInfo << endl;
+        //             out.close();
+        //         }
+        //     }
+        // }
         delete packet;
         return;
     }
@@ -1243,18 +1249,21 @@ void Udp::processICMPv6Error(Packet *packet)
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
         emit(packetDroppedSignal, packet, &details);
-        // Save packet drop detail to file
-        std::string packetName = packet->getName();
-        if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
-            if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
-            }
-        }
+        // NOTE: 14/07/2023 Stop recording incorrectly received packets to save memory
+        // // Save packet drop detail to file
+        // std::string packetName = packet->getName();
+        // if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
+        //     if (packet->findTag<SnirInd>()){
+        //         if (packet->getTag<SnirInd>()->getRecordPacket()){
+        //             std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+        //             std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+        //             std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
+        //             std::ofstream out(csvFilePath, std::ios::app);
+        //             out << packetInfo << endl;
+        //             out.close();
+        //         }
+        //     }
+        // }
         delete packet;
         return;
     }

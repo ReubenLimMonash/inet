@@ -80,12 +80,14 @@ void PacketBuffer::addPacket(Packet *packet)
                 // TODO maybe the buffer should take ownership and queues should be aware of it
                 // Save packet drop detail to file
                 if (packet->findTag<SnirInd>()){
-                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "QUEUE_OVERFLOW");
-                    std::ofstream out(csvFilePath, std::ios::app);
-                    out << packetInfo << endl;
-                    out.close();
+                    if (packet->getTag<SnirInd>()->getRecordPacket()){
+                        std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                        std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                        std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "QUEUE_OVERFLOW");
+                        std::ofstream out(csvFilePath, std::ios::app);
+                        out << packetInfo << endl;
+                        out.close();
+                    }
                 }
                 take(packet);
                 dropPacket(packet, QUEUE_OVERFLOW);

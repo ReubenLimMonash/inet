@@ -102,12 +102,14 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
             EV_INFO << "Dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "QUEUE_OVERFLOW");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "QUEUE_OVERFLOW");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             queue.remove(packet);
             dropPacket(packet, QUEUE_OVERFLOW);

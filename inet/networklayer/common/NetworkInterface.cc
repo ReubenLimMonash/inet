@@ -77,12 +77,14 @@ bool NetworkInterface::LocalGate::deliver(cMessage *msg, const SendOptions &opti
             networkInterface->emit(packetDroppedSignal, packet, &details);
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
         }
         else
@@ -210,12 +212,14 @@ void NetworkInterface::pushPacket(Packet *packet, cGate *gate)
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             dropPacket(packet, INTERFACE_DOWN);
         }
@@ -223,12 +227,14 @@ void NetworkInterface::pushPacket(Packet *packet, cGate *gate)
             EV_WARN << "Network interface has no carrier, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_CARRIER");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_CARRIER");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             dropPacket(packet, NO_CARRIER);
         }
@@ -252,12 +258,14 @@ void NetworkInterface::pushPacketStart(Packet *packet, cGate *gate, bps datarate
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             dropPacket(packet, INTERFACE_DOWN);
         }
@@ -265,12 +273,14 @@ void NetworkInterface::pushPacketStart(Packet *packet, cGate *gate, bps datarate
             EV_WARN << "Network interface has no carrier, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_CARRIER");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_CARRIER");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             dropPacket(packet, NO_CARRIER);
         }
@@ -295,12 +305,14 @@ void NetworkInterface::pushPacketEnd(Packet *packet, cGate *gate)
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INTERFACE_DOWN");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             dropPacket(packet, INTERFACE_DOWN);
         }
@@ -308,12 +320,14 @@ void NetworkInterface::pushPacketEnd(Packet *packet, cGate *gate)
             EV_WARN << "Network interface has no carrier, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName(); // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_CARRIER");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName(); // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_CARRIER");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             dropPacket(packet, NO_CARRIER);
         }

@@ -305,12 +305,14 @@ void Dcf::originatorProcessRtsProtectionFailed(Packet *packet)
         details.setLimit(recoveryProcedure->getShortRetryLimit());
         // Save packet drop detail to file
         if (packet->findTag<SnirInd>()){
-            std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "RETRY_LIMIT_REACHED");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (packet->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "RETRY_LIMIT_REACHED");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         emit(packetDroppedSignal, packet, &details);
         emit(linkBrokenSignal, packet);
@@ -391,12 +393,14 @@ void Dcf::originatorProcessFailedFrame(Packet *failedPacket)
         details.setLimit(-1); // TODO
         // Save packet drop detail to file
         if (failedPacket->findTag<SnirInd>()){
-            std::string packetDropCSV = failedPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(failedPacket, "RETRY_LIMIT_REACHED");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (failedPacket->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = failedPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(failedPacket, "RETRY_LIMIT_REACHED");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         emit(packetDroppedSignal, failedPacket, &details);
         emit(linkBrokenSignal, failedPacket);
@@ -405,6 +409,10 @@ void Dcf::originatorProcessFailedFrame(Packet *failedPacket)
         EV_INFO << "Retrying frame " << failedPacket->getName() << ".\n";
         auto h = failedPacket->removeAtFront<Ieee80211DataOrMgmtHeader>();
         h->setRetry(true);
+        // Added on 1/2/2023 to record number of retries -----------------
+        int retryCount = recoveryProcedure->getRetryCount(failedPacket, failedHeader);
+        failedPacket->addTagIfAbsent<SnirInd>()->setRetryCount(retryCount);
+        // ---------------------------------------------------------------
         failedPacket->insertAtFront(h);
     }
 }

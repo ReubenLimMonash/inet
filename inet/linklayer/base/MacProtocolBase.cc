@@ -157,12 +157,15 @@ void MacProtocolBase::handleStopOperation(LifecycleOperation *operation)
     if (currentTxFrame) {
         // Save packet drop detail to file
         if (currentTxFrame->findTag<SnirInd>()){
-            std::string packetDropCSV = currentTxFrame->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(currentTxFrame, "INTERFACE_DOWN");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            // Only record the packet in CSV file if the record flag is set
+            if (currentTxFrame->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = currentTxFrame->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(currentTxFrame, "INTERFACE_DOWN");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         dropCurrentTxFrame(details);
     }
@@ -264,9 +267,11 @@ std::string MacProtocolBase::getPacketInfoCSV(Packet *pk, std::string reason)
         queueingTime = snirInd->getQueueingTime(); 
         os << now << "," << packetCreationTime << ",";
     }
-    os << packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << "," << U2USnir << "," << U2GBer << "," << U2UBer << ",";
-    os << delay << "," << queueingTime << "," << backoffTime << "," << U2GDistance << "," << pk->hasBitError() << ",";
-    os << reason;
+    // os << packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << "," << U2USnir << "," << U2GBer << "," << U2UBer << ",";
+    // os << delay << "," << queueingTime << "," << backoffTime << "," << U2GDistance << "," << pk->hasBitError() << ",";
+    // os << reason;
+    // MINIMISE DATA MODE (to revert, search for the term: MINIMISE DATA MODE)
+    os << packetName << "," << pk->getByteLength() << "," << reason;
 
     // Uncomment for debugging
     // std::cout << os.str() << std::endl;

@@ -465,6 +465,8 @@ class INET_API SnirInd : public ::inet::SignalTagBase
     double U2GSnir = NaN;
     double U2USnir = NaN;
     double U2GDistance = NaN;
+    int retryCount = 0;
+    bool recordPacket = true; // By default, always record packet
 
   private:
     void copy(const SnirInd& other);
@@ -513,6 +515,12 @@ class INET_API SnirInd : public ::inet::SignalTagBase
 
     virtual double getU2GDistance() const;
     virtual void setU2GDistance(double U2GDistance);
+
+    virtual int getRetryCount() const;
+    virtual void setRetryCount(int retryCount);
+
+    virtual bool getRecordPacket() const;
+    virtual void setRecordPacket(bool recordPacket);
 };
 
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const SnirInd& obj) {obj.parsimPack(b);}

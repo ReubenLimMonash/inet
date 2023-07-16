@@ -3557,6 +3557,8 @@ void SnirInd::copy(const SnirInd& other)
     this->U2GSnir = other.U2GSnir;
     this->U2USnir = other.U2USnir;
     this->U2GDistance = other.U2GDistance;
+    this->retryCount = other.retryCount;
+    this->recordPacket = other.recordPacket;
 }
 
 void SnirInd::parsimPack(omnetpp::cCommBuffer *b) const
@@ -3573,6 +3575,8 @@ void SnirInd::parsimPack(omnetpp::cCommBuffer *b) const
     doParsimPacking(b,this->U2GSnir);
     doParsimPacking(b,this->U2USnir);
     doParsimPacking(b,this->U2GDistance);
+    doParsimPacking(b,this->retryCount);
+    doParsimPacking(b,this->recordPacket);
 }
 
 void SnirInd::parsimUnpack(omnetpp::cCommBuffer *b)
@@ -3589,6 +3593,8 @@ void SnirInd::parsimUnpack(omnetpp::cCommBuffer *b)
     doParsimUnpacking(b,this->U2GSnir);
     doParsimUnpacking(b,this->U2USnir);
     doParsimUnpacking(b,this->U2GDistance);
+    doParsimUnpacking(b,this->retryCount);
+    doParsimUnpacking(b,this->recordPacket);
 }
 
 double SnirInd::getMinimumSnir() const
@@ -3706,6 +3712,28 @@ void SnirInd::setU2GDistance(double U2GDistance)
     this->U2GDistance = U2GDistance;
 }
 
+// Added on 1/2/2023 to record retry counts
+int SnirInd::getRetryCount() const
+{
+    return this->retryCount;
+}
+
+void SnirInd::setRetryCount(int retryCount)
+{
+    this->retryCount = retryCount;
+}
+
+// Added on 12/7/2023 to record retry counts
+bool SnirInd::getRecordPacket() const
+{
+    return this->recordPacket;
+}
+
+void SnirInd::setRecordPacket(bool recordPacket)
+{
+    this->recordPacket = recordPacket;
+}
+
 class SnirIndDescriptor : public omnetpp::cClassDescriptor
 {
   private:
@@ -3722,6 +3750,8 @@ class SnirIndDescriptor : public omnetpp::cClassDescriptor
         FIELD_U2GSnir,
         FIELD_U2USnir,
         FIELD_U2GDistance,
+        FIELD_retryCount,
+        FIELD_recordPacket,
     };
   public:
     SnirIndDescriptor();
@@ -3788,7 +3818,7 @@ const char *SnirIndDescriptor::getProperty(const char *propertyName) const
 int SnirIndDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
-    return base ? 11+base->getFieldCount() : 11;
+    return base ? 13+base->getFieldCount() : 13;
 }
 
 unsigned int SnirIndDescriptor::getFieldTypeFlags(int field) const
@@ -3811,8 +3841,10 @@ unsigned int SnirIndDescriptor::getFieldTypeFlags(int field) const
         FD_ISEDITABLE,    // FIELD_U2GSnir
         FD_ISEDITABLE,    // FIELD_U2USnir
         FD_ISEDITABLE,    // FIELD_U2GDistance
+        FD_ISEDITABLE,    // FIELD_retryCount
+        FD_ISEDITABLE,    // FIELD_recordPacket
     };
-    return (field >= 0 && field < 11) ? fieldTypeFlags[field] : 0;
+    return (field >= 0 && field < 13) ? fieldTypeFlags[field] : 0;
 }
 
 const char *SnirIndDescriptor::getFieldName(int field) const
@@ -3835,8 +3867,10 @@ const char *SnirIndDescriptor::getFieldName(int field) const
         "U2GSnir",
         "U2USnir",
         "U2GDistance",
+        "retryCount",
+        "recordPacket",
     };
-    return (field >= 0 && field < 11) ? fieldNames[field] : nullptr;
+    return (field >= 0 && field < 13) ? fieldNames[field] : nullptr;
 }
 
 int SnirIndDescriptor::findField(const char *fieldName) const
@@ -3854,6 +3888,8 @@ int SnirIndDescriptor::findField(const char *fieldName) const
     if (strcmp(fieldName, "U2GSnir") == 0) return baseIndex + 8;
     if (strcmp(fieldName, "U2USnir") == 0) return baseIndex + 9;
     if (strcmp(fieldName, "U2GDistance") == 0) return baseIndex + 10;
+    if (strcmp(fieldName, "retryCount") == 0) return baseIndex + 11;
+    if (strcmp(fieldName, "recordPacket") == 0) return baseIndex + 12;
     return base ? base->findField(fieldName) : -1;
 }
 
@@ -3877,8 +3913,10 @@ const char *SnirIndDescriptor::getFieldTypeString(int field) const
         "double",   // Field_U2GSnir
         "double",   // Field_U2USnir
         "double",   // Field_U2GDistance
+        "int",   // Field_retryCount
+        "bool",     // FIELD_recordPacket
     };
-    return (field >= 0 && field < 11) ? fieldTypeStrings[field] : nullptr;
+    return (field >= 0 && field < 13) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **SnirIndDescriptor::getFieldPropertyNames(int field) const
@@ -3972,6 +4010,8 @@ std::string SnirIndDescriptor::getFieldValueAsString(omnetpp::any_ptr object, in
         case FIELD_U2GSnir: return double2string(pp->getU2GSnir());
         case FIELD_U2USnir: return double2string(pp->getU2USnir());
         case FIELD_U2GDistance: return double2string(pp->getU2GDistance());
+        case FIELD_retryCount: return double2string(double(pp->getRetryCount()));
+        case FIELD_recordPacket: return bool2string(pp->getRecordPacket()); // Converting boolean to str
         default: return "";
     }
 }
@@ -3999,6 +4039,8 @@ void SnirIndDescriptor::setFieldValueAsString(omnetpp::any_ptr object, int field
         case FIELD_U2GSnir: pp->setU2GSnir(string2double(value)); break;
         case FIELD_U2USnir: pp->setU2USnir(string2double(value)); break;
         case FIELD_U2GDistance: pp->setU2GDistance(string2double(value)); break;
+        case FIELD_retryCount: pp->setRetryCount(int(string2double(value))); break;
+        case FIELD_recordPacket: pp->setRecordPacket(string2bool(value)); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'SnirInd'", field);
     }
 }
@@ -4024,6 +4066,8 @@ omnetpp::cValue SnirIndDescriptor::getFieldValue(omnetpp::any_ptr object, int fi
         case FIELD_U2GSnir: return pp->getU2GSnir();
         case FIELD_U2USnir: return pp->getU2USnir();
         case FIELD_U2GDistance: return pp->getU2GDistance();
+        case FIELD_retryCount: return pp->getRetryCount();
+        case FIELD_recordPacket: return pp->getRecordPacket();
         default: throw omnetpp::cRuntimeError("Cannot return field %d of class 'SnirInd' as cValue -- field index out of range?", field);
     }
 }
@@ -4051,6 +4095,8 @@ void SnirIndDescriptor::setFieldValue(omnetpp::any_ptr object, int field, int i,
         case FIELD_U2GSnir: pp->setU2GSnir(value.doubleValue()); break;
         case FIELD_U2USnir: pp->setU2USnir(value.doubleValue()); break;
         case FIELD_U2GDistance: pp->setU2GDistance(value.doubleValue()); break;
+        case FIELD_retryCount: pp->setRetryCount(int(value.doubleValue())); break;
+        case FIELD_recordPacket: pp->setRecordPacket(value); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'SnirInd'", field);
     }
 }

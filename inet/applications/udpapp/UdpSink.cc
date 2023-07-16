@@ -10,6 +10,7 @@
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/physicallayer/wireless/common/contract/packetlevel/SignalTag_m.h"
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -46,9 +47,12 @@ void UdpSink::initialize(int stage)
         std::filesystem::path file (m_CSVFileName.c_str());
         m_CSVFullPath = dir / file ;
         std::ofstream out(m_CSVFullPath);
-        out << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "RSSI," << "U2G_SINR," << "U2U_SINR," << "U2G_BER," << "U2U_BER," <<
-                "Src_Addr," << "Dest_Addr," << "Hop_Count," << "Delay," << "Queueing_Time," << "Backoff_Time," << 
-                "U2G_Distance," << std::endl;
+        // out << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "RSSI," << "U2G_SINR," << "U2U_SINR," << "U2G_BER," << "U2U_BER," <<
+        //         "Src_Addr," << "Dest_Addr," << "Hop_Count," << "Delay," << "Queueing_Time," << "Backoff_Time," << 
+        //         "U2G_Distance," << "Retry_Count" << std::endl;
+        // MINIMISE DATA MODE (to revert, search for the term: MINIMISE DATA MODE)
+        out << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "RSSI," << "U2G_SINR," << "U2G_BER," <<
+                "Retry_Count," << "Dest_Addr," << "U2G_Distance" << std::endl;
         out.close();
         if (stopTime >= SIMTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
@@ -156,9 +160,14 @@ void UdpSink::processPacket(Packet *pk)
     EV_INFO << "Received packet: " << UdpSocket::getReceivedPacketInfo(pk) << endl;
     emit(packetReceivedSignal, pk);
 
-    std::ofstream out(m_CSVFullPath, std::ios::app);
-    out << UdpSocket::getReceivedPacketInfoCSV(pk) << endl;
-    out.close();
+    // Only record the packet in CSV file if the record flag is set
+    auto snirInd = pk->getTag<SnirInd>();
+    bool recordPacket = snirInd->getRecordPacket();
+    if (recordPacket) {
+        std::ofstream out(m_CSVFullPath, std::ios::app);
+        out << UdpSocket::getReceivedPacketInfoCSV(pk, numReceived) << endl;
+        out.close();
+    }
     delete pk;
 
     numReceived++;

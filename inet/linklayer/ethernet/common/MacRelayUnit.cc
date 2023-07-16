@@ -83,12 +83,15 @@ void MacRelayUnit::handleLowerPacket(Packet *incomingPacket)
             emit(packetDroppedSignal, outgoingPacket, &details);
             // Save packet drop detail to file
             if (outgoingPacket->findTag<SnirInd>()){
-                std::string packetDropCSV = outgoingPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(outgoingPacket, "NO_INTERFACE_FOUND");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                // Only record the packet in CSV file if the record flag is set
+                if (outgoingPacket->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = outgoingPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(outgoingPacket, "NO_INTERFACE_FOUND");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             delete outgoingPacket;
         }

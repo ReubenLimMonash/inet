@@ -150,9 +150,10 @@ std::string Ieee80211ReceiverBase::getReceivedPacketInfoCSV(Packet *pk)
     double U2GDistance = snirInd->getU2GDistance();
     double backoffTime = snirInd->getBackoffPeriod();
     double queueingTime = snirInd->getQueueingTime(); 
+    int retryCount = snirInd->getRetryCount();
     std::stringstream os;
     // std::cout << packetName << std::endl;
-    // std::cout << pk->getTag<SnirInd>()->getFileName() << std::endl;
+    // std::cout << retryCount << std::endl;
     // if ((packetName[-3] == "A") && (packetName[-2] == "c") && (packetName[-1] == "k")) {
     if ((packetName.compare(0, 4, "Wlan")) == 0) {
         // For Ack packets

@@ -273,6 +273,23 @@ void Ipv4::handleIncomingDatagram(Packet *packet)
         EV_WARN << "CRC error found, drop packet\n";
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
+        // NOTE: 14/07/2023 Stop recording incorrectly received packets to save memory
+        // // Save packet drop detail to file (ONLY IF INTENDED FOR US) (and only if not WlanAck or arp related packets)
+        // std::string packetName = packet->getName();
+        // if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
+        //     if (packet->findTag<SnirInd>()){
+        //         if (packet->getTag<SnirInd>()->getRecordPacket()){
+        //             std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+        //             std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+        //             std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
+        //             std::ofstream out(csvFilePath, std::ios::app);
+        //             out << packetInfo << endl;
+        //             out.close();
+        //             // std::cout << "INCORRECTLY_RECEIVED detected at Ipv4" << std::endl;
+        //         }
+        //     }
+        // }
+        // Above added by Reuben 15042023-------------------------------------------------------------------------------
         emit(packetDroppedSignal, packet, &details);
         delete packet;
         return;
@@ -409,12 +426,14 @@ void Ipv4::handlePacketFromHL(Packet *packet)
         emit(packetDroppedSignal, packet, &details);
         // Save packet drop detail to file
         if (packet->findTag<SnirInd>()){
-            std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_INTERFACE_FOUND");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (packet->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_INTERFACE_FOUND");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         delete packet;
         return;
@@ -475,12 +494,14 @@ void Ipv4::datagramLocalOut(Packet *packet)
             emit(packetDroppedSignal, packet, &details);
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_INTERFACE_FOUND");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_INTERFACE_FOUND");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             delete packet;
         }
@@ -588,12 +609,14 @@ void Ipv4::routeUnicastPacket(Packet *packet)
         emit(packetDroppedSignal, packet, &details);
         // Save packet drop detail to file
         if (packet->findTag<SnirInd>()){
-            std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_ROUTE_FOUND");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (packet->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_ROUTE_FOUND");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         sendIcmpError(packet, fromIE ? fromIE->getInterfaceId() : -1, ICMP_DESTINATION_UNREACHABLE, 0);
     }
@@ -651,12 +674,14 @@ void Ipv4::routeLocalBroadcastPacket(Packet *packet)
         emit(packetDroppedSignal, packet, &details);
         // Save packet drop detail to file
         if (packet->findTag<SnirInd>()){
-            std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_INTERFACE_FOUND");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (packet->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_INTERFACE_FOUND");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         delete packet;
     }
@@ -697,12 +722,14 @@ void Ipv4::forwardMulticastPacket(Packet *packet)
             emit(packetDroppedSignal, packet, &details);
             // Save packet drop detail to file
             if (packet->findTag<SnirInd>()){
-                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_ROUTE_FOUND");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (packet->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "NO_ROUTE_FOUND");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             delete packet;
             return;
@@ -928,12 +955,14 @@ void Ipv4::fragmentAndSend(Packet *packet)
         EV_WARN << "datagram TTL reached zero, sending ICMP_TIME_EXCEEDED\n";
         // Save packet drop detail to file
         if (packet->findTag<SnirInd>()){
-            std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-            std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-            std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "HOP_LIMIT_REACHED");
-            std::ofstream out(csvFilePath, std::ios::app);
-            out << packetInfo << endl;
-            out.close();
+            if (packet->getTag<SnirInd>()->getRecordPacket()){
+                std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "HOP_LIMIT_REACHED");
+                std::ofstream out(csvFilePath, std::ios::app);
+                out << packetInfo << endl;
+                out.close();
+            }
         }
         sendIcmpError(packet, -1 /*TODO*/, ICMP_TIME_EXCEEDED, 0);
         numDropped++;
@@ -1180,12 +1209,14 @@ void Ipv4::arpResolutionTimedOut(IArp::Notification *entry)
             // Save packet drop detail to file
             Packet *inetPacket = check_and_cast<Packet *>(packet);
             if (inetPacket->findTag<SnirInd>()){
-                std::string packetDropCSV = inetPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                std::string packetInfo = MacProtocolBase::getPacketInfoCSV(inetPacket, "ADDRESS_RESOLUTION_FAILED");
-                std::ofstream out(csvFilePath, std::ios::app);
-                out << packetInfo << endl;
-                out.close();
+                if (inetPacket->getTag<SnirInd>()->getRecordPacket()){
+                    std::string packetDropCSV = inetPacket->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(inetPacket, "ADDRESS_RESOLUTION_FAILED");
+                    std::ofstream out(csvFilePath, std::ios::app);
+                    out << packetInfo << endl;
+                    out.close();
+                }
             }
             // I'm not sure if the above will work, let's just store ARP failures in a temp file first
             // std::filesystem::path experimental ("/home/research-student/omnetpp_sim_results/Experimental.csv");

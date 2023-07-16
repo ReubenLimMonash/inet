@@ -80,21 +80,24 @@ bool Rx::lowerFrameReceived(Packet *packet)
         EV_INFO << "Received an erroneous frame from PHY, dropping it." << std::endl;
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
-        // Save packet drop detail to file (ONLY IF INTENDED FOR US) (and only if not WlanAck or arp related packets)
-        const auto& header = packet->peekAtFront<Ieee80211MacHeader>();
-        std::string packetName = packet->getName();
-        if (header->getReceiverAddress() == address) {
-            if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
-                if (packet->findTag<SnirInd>()){
-                    std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
-                    std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
-                    std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
-                    std::ofstream out(csvFilePath, std::ios::app);
-                    out << packetInfo << endl;
-                    out.close();
-                }
-            }
-        }
+        // NOTE: 14/07/2023 Stop recording incorrectly received packets to save memory
+        // // Save packet drop detail to file (ONLY IF INTENDED FOR US) (and only if not WlanAck or arp related packets)
+        // const auto& header = packet->peekAtFront<Ieee80211MacHeader>();
+        // std::string packetName = packet->getName();
+        // if (header->getReceiverAddress() == address) {
+        //     if ((packetName.compare(0, 4, "Wlan") != 0) && (packetName.compare(0, 3, "arp") != 0)) {
+        //         if (packet->findTag<SnirInd>()){
+        //             if (packet->getTag<SnirInd>()->getRecordPacket()){
+        //                 std::string packetDropCSV = packet->getTag<SnirInd>()->getFileName() + "PacketDrop.csv"; // For saving to CSV file
+        //                 std::filesystem::path csvFilePath (packetDropCSV.c_str()); // For saving to CSV file
+        //                 std::string packetInfo = MacProtocolBase::getPacketInfoCSV(packet, "INCORRECTLY_RECEIVED");
+        //                 std::ofstream out(csvFilePath, std::ios::app);
+        //                 out << packetInfo << endl;
+        //                 out.close();
+        //             }
+        //         }
+        //     }
+        // }
         emit(packetDroppedSignal, packet, &details);
         delete packet;
         for (auto contention : contentions)
