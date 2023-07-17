@@ -304,7 +304,7 @@ class INET_API UdpSocket : public ISocket
      * Custom Utility function: returns information about packet received via UDP.
      * Info: "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "RSSI," << "SINR," << "Src_Addr," << "Src_Port," << "Dest_Addr," << "Dest_Port," << "Hop_Count," << "Delay"
      */
-    static std::string getReceivedPacketInfoCSV(Packet *pk);
+    static std::string getReceivedPacketInfoCSV(Packet *pk, int numReceived);
     //@}
 };
 

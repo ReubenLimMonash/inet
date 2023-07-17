@@ -339,8 +339,9 @@ std::string UdpSocket::getReceivedPacketInfo(Packet *pk)
     return os.str();
 }
 
-std::string UdpSocket::getReceivedPacketInfoCSV(Packet *pk)
+std::string UdpSocket::getReceivedPacketInfoCSV(Packet *pk, int numReceived)
 {
+    // 14/07/2023 Added numReceived input to change the returned string based on whether this is the first packet received
     simtime_t now = simTime();
     auto l3Addresses = pk->getTag<L3AddressInd>();
     auto ports = pk->getTag<L4PortInd>();
@@ -367,16 +368,19 @@ std::string UdpSocket::getReceivedPacketInfoCSV(Packet *pk)
     double queueingTime = snirInd->getQueueingTime();
     double backoffTime = snirInd->getBackoffPeriod();
     int retryCount = snirInd->getRetryCount();
-    // auto test = pk->getTag<SnirInd>()->getTest();
-    // std::cout << "Queueing Time Tag :" << std::endl;
-    // std::cout << queueingTime << std::endl;
-    // auto queueingTag = pk->getTag<QueueingTimeTag>();
-    // std::cout << queueingTag << std::endl;
-    // std::cout << txDistance << std::endl;
     std::stringstream os;
-    os << now << "," << packetCreationTime << "," <<  packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << ",";
-    os << U2USnir << "," << U2GBer << "," << U2UBer << "," << srcAddr.str() << "," << destAddr.str() << ",";
-    os << hopCount << "," << now - packetCreationTime << "," << queueingTime << "," << backoffTime << "," << U2GDistance << "," << retryCount;
+    // os << now << "," << packetCreationTime << "," <<  packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << ",";
+    // os << U2USnir << "," << U2GBer << "," << U2UBer << "," << srcAddr.str() << "," << destAddr.str() << ",";
+    // os << hopCount << "," << now - packetCreationTime << "," << queueingTime << "," << backoffTime << "," << U2GDistance << "," << retryCount;
+    // MINIMISE DATA MODE (to revert, search for the term: MINIMISE DATA MODE)
+    if (numReceived == 0){
+        os << now << "," << packetCreationTime << "," <<  packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << "," <<
+            U2GBer << "," << retryCount << "," << destAddr.str() << "," << U2GDistance;
+    }
+    else{
+        os << now << "," << packetCreationTime << "," <<  packetName << "," << pk->getByteLength() << "," << rssi << "," << U2GSnir << "," << U2GBer << "," << retryCount;
+    }
+    
     return os.str();
 }
 
