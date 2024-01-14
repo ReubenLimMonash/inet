@@ -4,9 +4,13 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
+// Date: 30/08/2023
+// Desc: To use custom CSV file to define the packet lengths and Tx time to send each packet. 
+//       CSV file should have two columns, first one for Tx time, second one for packet lengths
+//       The application will cycle through the packets in the CSV file until application stop time
+// Author: Reuben Lim
 
-
-#include "inet/applications/udpapp/UdpGCSCmdApp.h"
+#include "inet/applications/udpapp/UdpBasicCsvApp.h"
 
 #include "inet/applications/base/ApplicationPacket_m.h"
 #include "inet/common/ModuleAccess.h"
@@ -21,17 +25,22 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <random>
 
 namespace inet {
 
-Define_Module(UdpGCSCmdApp);
+Define_Module(UdpBasicCsvApp);
 
-UdpGCSCmdApp::~UdpGCSCmdApp()
+UdpBasicCsvApp::~UdpBasicCsvApp()
 {
     cancelAndDelete(selfMsg);
 }
 
-void UdpGCSCmdApp::initialize(int stage)
+void UdpBasicCsvApp::initialize(int stage)
 {
     ClockUserModuleMixin::initialize(stage);
 
@@ -40,6 +49,7 @@ void UdpGCSCmdApp::initialize(int stage)
         numReceived = 0;
         WATCH(numSent);
         WATCH(numReceived);
+        pcapIndex = 0;
 
         localPort = par("localPort");
         destPort = par("destPort");
@@ -49,7 +59,9 @@ void UdpGCSCmdApp::initialize(int stage)
         dontFragment = par("dontFragment");
         m_CSVFilePath = par("csvFilePath").stdstringValue(); // Folder to store CSV file
         m_CSVFileName = par("csvFileName").stdstringValue(); // File name to store CSV file
+        m_PCAPCSVFullPath = par("pcapCsvFileName").stdstringValue(); // File path of PCAP CSV for defining packet size and send interval
         numPacketRecord = par("numPacketRecord");
+        seed = par("seed");
         // First, let's try to create the directory
         if (!std::filesystem::exists(m_CSVFilePath)){
             std::error_code err;
@@ -71,20 +83,21 @@ void UdpGCSCmdApp::initialize(int stage)
         // MINIMISE DATA MODE (to revert, search for the term: MINIMISE DATA MODE)
         out_pd << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "Packet_Drop_Reason" << std::endl;
         out_pd.close();
+        readPcapCsv();
         if (stopTime >= CLOCKTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
         selfMsg = new ClockEvent("sendTimer");
     }
 }
 
-void UdpGCSCmdApp::finish()
+void UdpBasicCsvApp::finish()
 {
     recordScalar("packets sent", numSent);
     recordScalar("packets received", numReceived);
     ApplicationBase::finish();
 }
 
-void UdpGCSCmdApp::setSocketOptions()
+void UdpBasicCsvApp::setSocketOptions()
 {
     int timeToLive = par("timeToLive");
     if (timeToLive != -1)
@@ -119,7 +132,7 @@ void UdpGCSCmdApp::setSocketOptions()
     socket.setCallback(this);
 }
 
-L3Address UdpGCSCmdApp::chooseDestAddr()
+L3Address UdpBasicCsvApp::chooseDestAddr()
 {
     int k = intrand(destAddresses.size());
     if (destAddresses[k].isUnspecified() || destAddresses[k].isLinkLocal()) {
@@ -128,61 +141,95 @@ L3Address UdpGCSCmdApp::chooseDestAddr()
     return destAddresses[k];
 }
 
-void UdpGCSCmdApp::sendPacket()
+void UdpBasicCsvApp::readPcapCsv()
 {
-    // Send a packet to every address
-    int numAddr = destAddresses.size();
-    int packetSize = par("messageLength");
-    for (int i = 0; i < numAddr; i++) {
-        if (destAddresses[i].isUnspecified() || destAddresses[i].isLinkLocal()) {
-            L3AddressResolver().tryResolve(destAddressStr[i].c_str(), destAddresses[i]);
-        }
-        std::ostringstream str;
-        str << packetName << "-" << numSent;
-        Packet *packet = new Packet(str.str().c_str());
-        if (dontFragment)
-            packet->addTag<FragmentationReq>()->setDontFragment(true);
-        const auto& payload = makeShared<ApplicationPacket>();
-        simtime_t now = simTime();
-        payload->setChunkLength(B(packetSize));
-        payload->setSequenceNumber(numSent);
-        payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
-        packet->insertAtBack(payload);
-        // L3Address destAddr = chooseDestAddr();
-        L3Address destAddr = destAddresses[i];
+    // Reads the PCAP CSV file and store contents in pcap_content (initialized in .h file)
+    // pcap_content should be a 2D matrix, First column is send interval, Second column is packet size
+    // NOTE: The very first packet will be sent based on startTime and not based on send interval
+	std::vector<std::string> row;
+	std::string line, word;
 
-        // Added by Reuben on 5/9/2022
-        // Store the module CSV file name to the packet tag
-        std::string fileName = m_CSVFullPath.string();
-        packet->addTagIfAbsent<SnirInd>()->setFileName(fileName.substr(0,fileName.length()-6)); // Update the CSV file path to this current module's (leave out App[0]-Tx.csv)
+    // std::shuffle(v.begin(),v.end(), std::default_random_engine(seed));
+	std::fstream file (m_PCAPCSVFullPath.c_str(), std::ios::in);
+	if(file.is_open())
+	{
+        std::getline(file, line); // Ignore the first line as it should be data header row
+		while(std::getline(file, line))
+		{
+			row.clear();
+			std::stringstream str(line);
+			while(std::getline(str, word, ','))
+				row.push_back(word);
+			pcap_content.push_back(row);
+		}
+	}
+	else
+    {
+        throw cRuntimeError("Could not open PCAP CSV File.\n");
+    }
 
-        if ((numPacketRecord == -1) | (numSent < numPacketRecord)){
-            packet->addTagIfAbsent<SnirInd>()->setRecordPacket(true); // Set flag to record packet in CSV
-            // Let's log the packet sending application
-            std::stringstream os;
-            // If this is the first packet being recorded,then include packetName, else exclude. This is to save space
-            if (numSent == 0){
-                os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str() << "," << packetName;
-            }
-            else{
-                os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str();
-            }
-            std::ofstream out(m_CSVFullPath, std::ios::app);
-            out << os.str() << endl;
-            out.close();
+    if (seed != -1)
+    {
+        std::shuffle(pcap_content.begin(), pcap_content.end(), std::default_random_engine(seed));
+    }
+    
+}
+
+void UdpBasicCsvApp::sendPacket()
+{
+    std::ostringstream str;
+    str << packetName << "-" << numSent;
+    Packet *packet = new Packet(str.str().c_str());
+    if (dontFragment)
+        packet->addTag<FragmentationReq>()->setDontFragment(true);
+    const auto& payload = makeShared<ApplicationPacket>();
+    simtime_t now = simTime();
+    int packetSize = std::stoi(pcap_content[pcapIndex][1]);
+    payload->setChunkLength(B(std::stoi(pcap_content[pcapIndex][1])));
+    payload->setSequenceNumber(numSent);
+    payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
+    packet->insertAtBack(payload);
+    L3Address destAddr = chooseDestAddr();
+
+    // Added by Reuben on 5/9/2022
+    // Store the module CSV file name to the packet tag
+    std::string fileName = m_CSVFullPath.string();
+    packet->addTagIfAbsent<SnirInd>()->setFileName(fileName.substr(0,fileName.length()-6)); // Update the CSV file path to this current module's (leave out App[0]-Tx.csv)
+
+    if ((numPacketRecord == -1) | (numSent < numPacketRecord)){
+        packet->addTagIfAbsent<SnirInd>()->setRecordPacket(true); // Set flag to record packet in CSV
+        // Let's log the packet sending application
+        std::stringstream os;
+        // If this is the first packet being recorded,then include packetName, else exclude. This is to save space
+        if (numSent == 0){
+            os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str() << "," << packetName;
         }
         else{
-            packet->addTagIfAbsent<SnirInd>()->setRecordPacket(false); // Set flag to NOT record packet in CSV
+            os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str();
         }
+        std::ofstream out(m_CSVFullPath, std::ios::app);
+        out << os.str() << std::endl;
+        out.close();
+    }
+    else{
+        packet->addTagIfAbsent<SnirInd>()->setRecordPacket(false); // Set flag to NOT record packet in CSV
+    }
 
-        emit(packetSentSignal, packet);
-        socket.sendTo(packet, destAddr, destPort);
+    emit(packetSentSignal, packet);
+    socket.sendTo(packet, destAddr, destPort);
 
-        numSent++;
+    numSent++;
+    pcapIndex++;
+    if (pcapIndex >= pcap_content.size()){
+        pcapIndex = 0;
+        if (seed != -1)
+        {
+            std::shuffle(pcap_content.begin(), pcap_content.end(), std::default_random_engine(seed));
+        }
     }
 }
 
-void UdpGCSCmdApp::processStart()
+void UdpBasicCsvApp::processStart()
 {
     socket.setOutputGate(gate("socketOut"));
     const char *localAddress = par("localAddress");
@@ -231,10 +278,14 @@ void UdpGCSCmdApp::processStart()
     }
 }
 
-void UdpGCSCmdApp::processSend()
+void UdpBasicCsvApp::processSend()
 {
     sendPacket();
     clocktime_t d = par("sendInterval");
+    if (d < 0){
+        // If sendInterval = -1, use the values from CSV file
+        d = std::stod(pcap_content[pcapIndex][0]);
+    }
     if (stopTime < CLOCKTIME_ZERO || getClockTime() + d < stopTime) {
         selfMsg->setKind(SEND);
         scheduleClockEventAfter(d, selfMsg);
@@ -245,12 +296,12 @@ void UdpGCSCmdApp::processSend()
     }
 }
 
-void UdpGCSCmdApp::processStop()
+void UdpBasicCsvApp::processStop()
 {
     socket.close();
 }
 
-void UdpGCSCmdApp::handleMessageWhenUp(cMessage *msg)
+void UdpBasicCsvApp::handleMessageWhenUp(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
         ASSERT(msg == selfMsg);
@@ -275,25 +326,25 @@ void UdpGCSCmdApp::handleMessageWhenUp(cMessage *msg)
         socket.processMessage(msg);
 }
 
-void UdpGCSCmdApp::socketDataArrived(UdpSocket *socket, Packet *packet)
+void UdpBasicCsvApp::socketDataArrived(UdpSocket *socket, Packet *packet)
 {
     // process incoming packet
     processPacket(packet);
 }
 
-void UdpGCSCmdApp::socketErrorArrived(UdpSocket *socket, Indication *indication)
+void UdpBasicCsvApp::socketErrorArrived(UdpSocket *socket, Indication *indication)
 {
     EV_WARN << "Ignoring UDP error report " << indication->getName() << endl;
     delete indication;
 }
 
-void UdpGCSCmdApp::socketClosed(UdpSocket *socket)
+void UdpBasicCsvApp::socketClosed(UdpSocket *socket)
 {
     if (operationalState == State::STOPPING_OPERATION)
         startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
 }
 
-void UdpGCSCmdApp::refreshDisplay() const
+void UdpBasicCsvApp::refreshDisplay() const
 {
     ApplicationBase::refreshDisplay();
 
@@ -302,7 +353,7 @@ void UdpGCSCmdApp::refreshDisplay() const
     getDisplayString().setTagArg("t", 0, buf);
 }
 
-void UdpGCSCmdApp::processPacket(Packet *pk)
+void UdpBasicCsvApp::processPacket(Packet *pk)
 {
     emit(packetReceivedSignal, pk);
     EV_INFO << "Received packet: " << UdpSocket::getReceivedPacketInfo(pk) << endl;
@@ -313,7 +364,7 @@ void UdpGCSCmdApp::processPacket(Packet *pk)
     numReceived++;
 }
 
-void UdpGCSCmdApp::handleStartOperation(LifecycleOperation *operation)
+void UdpBasicCsvApp::handleStartOperation(LifecycleOperation *operation)
 {
     clocktime_t start = std::max(startTime, getClockTime());
     if ((stopTime < CLOCKTIME_ZERO) || (start < stopTime) || (start == stopTime && startTime == stopTime)) {
@@ -322,14 +373,14 @@ void UdpGCSCmdApp::handleStartOperation(LifecycleOperation *operation)
     }
 }
 
-void UdpGCSCmdApp::handleStopOperation(LifecycleOperation *operation)
+void UdpBasicCsvApp::handleStopOperation(LifecycleOperation *operation)
 {
     cancelEvent(selfMsg);
     socket.close();
     delayActiveOperationFinish(par("stopOperationTimeout"));
 }
 
-void UdpGCSCmdApp::handleCrashOperation(LifecycleOperation *operation)
+void UdpBasicCsvApp::handleCrashOperation(LifecycleOperation *operation)
 {
     cancelClockEvent(selfMsg);
     socket.destroy(); // TODO  in real operating systems, program crash detected by OS and OS closes sockets of crashed programs.

@@ -155,6 +155,7 @@ std::string Ieee80211ReceiverBase::getReceivedPacketInfoCSV(Packet *pk)
     // std::cout << packetName << std::endl;
     // std::cout << retryCount << std::endl;
     // if ((packetName[-3] == "A") && (packetName[-2] == "c") && (packetName[-1] == "k")) {
+    // std::cout << packetName << std::endl;
     if ((packetName.compare(0, 4, "Wlan")) == 0) {
         // For Ack packets
         os << now << "," << "Null" << ",";

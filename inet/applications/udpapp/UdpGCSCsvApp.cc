@@ -4,9 +4,13 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
+// Date: 30/08/2023
+// Desc: To use custom CSV file to define the packet lengths and Tx time to send each packet. 
+//       CSV file should have two columns, first one for Tx time, second one for packet lengths
+//       The application will cycle through the packets in the CSV file until application stop time
+// Author: Reuben Lim
 
-
-#include "inet/applications/udpapp/UdpGCSCmdApp.h"
+#include "inet/applications/udpapp/UdpGCSCsvApp.h"
 
 #include "inet/applications/base/ApplicationPacket_m.h"
 #include "inet/common/ModuleAccess.h"
@@ -21,17 +25,22 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <random>
 
 namespace inet {
 
-Define_Module(UdpGCSCmdApp);
+Define_Module(UdpGCSCsvApp);
 
-UdpGCSCmdApp::~UdpGCSCmdApp()
+UdpGCSCsvApp::~UdpGCSCsvApp()
 {
     cancelAndDelete(selfMsg);
 }
 
-void UdpGCSCmdApp::initialize(int stage)
+void UdpGCSCsvApp::initialize(int stage)
 {
     ClockUserModuleMixin::initialize(stage);
 
@@ -40,6 +49,7 @@ void UdpGCSCmdApp::initialize(int stage)
         numReceived = 0;
         WATCH(numSent);
         WATCH(numReceived);
+        pcapIndex = 0;
 
         localPort = par("localPort");
         destPort = par("destPort");
@@ -49,7 +59,9 @@ void UdpGCSCmdApp::initialize(int stage)
         dontFragment = par("dontFragment");
         m_CSVFilePath = par("csvFilePath").stdstringValue(); // Folder to store CSV file
         m_CSVFileName = par("csvFileName").stdstringValue(); // File name to store CSV file
+        m_PCAPCSVFullPath = par("pcapCsvFileName").stdstringValue(); // File path of PCAP CSV for defining packet size and send interval
         numPacketRecord = par("numPacketRecord");
+        seed = par("seed");
         // First, let's try to create the directory
         if (!std::filesystem::exists(m_CSVFilePath)){
             std::error_code err;
@@ -71,20 +83,21 @@ void UdpGCSCmdApp::initialize(int stage)
         // MINIMISE DATA MODE (to revert, search for the term: MINIMISE DATA MODE)
         out_pd << "RxTime," << "TxTime," << "Packet_Name,"<< "Bytes," << "Packet_Drop_Reason" << std::endl;
         out_pd.close();
+        readPcapCsv();
         if (stopTime >= CLOCKTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
         selfMsg = new ClockEvent("sendTimer");
     }
 }
 
-void UdpGCSCmdApp::finish()
+void UdpGCSCsvApp::finish()
 {
     recordScalar("packets sent", numSent);
     recordScalar("packets received", numReceived);
     ApplicationBase::finish();
 }
 
-void UdpGCSCmdApp::setSocketOptions()
+void UdpGCSCsvApp::setSocketOptions()
 {
     int timeToLive = par("timeToLive");
     if (timeToLive != -1)
@@ -119,7 +132,7 @@ void UdpGCSCmdApp::setSocketOptions()
     socket.setCallback(this);
 }
 
-L3Address UdpGCSCmdApp::chooseDestAddr()
+L3Address UdpGCSCsvApp::chooseDestAddr()
 {
     int k = intrand(destAddresses.size());
     if (destAddresses[k].isUnspecified() || destAddresses[k].isLinkLocal()) {
@@ -128,11 +141,44 @@ L3Address UdpGCSCmdApp::chooseDestAddr()
     return destAddresses[k];
 }
 
-void UdpGCSCmdApp::sendPacket()
+void UdpGCSCsvApp::readPcapCsv()
+{
+    // Reads the PCAP CSV file and store contents in pcap_content (initialized in .h file)
+    // pcap_content should be a 2D matrix, First column is send interval, Second column is packet size
+    // NOTE: The very first packet will be sent based on startTime and not based on send interval
+	std::vector<std::string> row;
+	std::string line, word;
+ 
+	std::fstream file (m_PCAPCSVFullPath.c_str(), std::ios::in);
+	if(file.is_open())
+	{
+        std::getline(file, line); // Ignore the first line as it should be data header row
+		while(std::getline(file, line))
+		{
+			row.clear();
+			std::stringstream str(line);
+			while(std::getline(str, word, ','))
+				row.push_back(word);
+			pcap_content.push_back(row);
+		}
+	}
+	else
+    {
+        throw cRuntimeError("Could not open PCAP CSV File.\n");
+    }
+ 
+    if (seed != -1)
+    {
+        std::shuffle(pcap_content.begin(), pcap_content.end(), std::default_random_engine(seed));
+    }
+
+}
+
+void UdpGCSCsvApp::sendPacket()
 {
     // Send a packet to every address
     int numAddr = destAddresses.size();
-    int packetSize = par("messageLength");
+    int packetSize = std::stoi(pcap_content[pcapIndex][1]);
     for (int i = 0; i < numAddr; i++) {
         if (destAddresses[i].isUnspecified() || destAddresses[i].isLinkLocal()) {
             L3AddressResolver().tryResolve(destAddressStr[i].c_str(), destAddresses[i]);
@@ -168,7 +214,7 @@ void UdpGCSCmdApp::sendPacket()
                 os << now << "," << numSent << "," << packet->getByteLength() << "," << destAddr.str();
             }
             std::ofstream out(m_CSVFullPath, std::ios::app);
-            out << os.str() << endl;
+            out << os.str() << std::endl;
             out.close();
         }
         else{
@@ -180,9 +226,18 @@ void UdpGCSCmdApp::sendPacket()
 
         numSent++;
     }
+    // Send the same packet to all UAV, then update the pcap index
+    pcapIndex++;
+    if (pcapIndex >= pcap_content.size()){
+        pcapIndex = 0;
+        if (seed != -1)
+        {
+            std::shuffle(pcap_content.begin(), pcap_content.end(), std::default_random_engine(seed));
+        }
+    }
 }
 
-void UdpGCSCmdApp::processStart()
+void UdpGCSCsvApp::processStart()
 {
     socket.setOutputGate(gate("socketOut"));
     const char *localAddress = par("localAddress");
@@ -231,10 +286,14 @@ void UdpGCSCmdApp::processStart()
     }
 }
 
-void UdpGCSCmdApp::processSend()
+void UdpGCSCsvApp::processSend()
 {
     sendPacket();
     clocktime_t d = par("sendInterval");
+    if (d < 0){
+        // If sendInterval = -1, use the values from CSV file
+        d = std::stod(pcap_content[pcapIndex][0]);
+    }
     if (stopTime < CLOCKTIME_ZERO || getClockTime() + d < stopTime) {
         selfMsg->setKind(SEND);
         scheduleClockEventAfter(d, selfMsg);
@@ -245,12 +304,12 @@ void UdpGCSCmdApp::processSend()
     }
 }
 
-void UdpGCSCmdApp::processStop()
+void UdpGCSCsvApp::processStop()
 {
     socket.close();
 }
 
-void UdpGCSCmdApp::handleMessageWhenUp(cMessage *msg)
+void UdpGCSCsvApp::handleMessageWhenUp(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
         ASSERT(msg == selfMsg);
@@ -275,25 +334,25 @@ void UdpGCSCmdApp::handleMessageWhenUp(cMessage *msg)
         socket.processMessage(msg);
 }
 
-void UdpGCSCmdApp::socketDataArrived(UdpSocket *socket, Packet *packet)
+void UdpGCSCsvApp::socketDataArrived(UdpSocket *socket, Packet *packet)
 {
     // process incoming packet
     processPacket(packet);
 }
 
-void UdpGCSCmdApp::socketErrorArrived(UdpSocket *socket, Indication *indication)
+void UdpGCSCsvApp::socketErrorArrived(UdpSocket *socket, Indication *indication)
 {
     EV_WARN << "Ignoring UDP error report " << indication->getName() << endl;
     delete indication;
 }
 
-void UdpGCSCmdApp::socketClosed(UdpSocket *socket)
+void UdpGCSCsvApp::socketClosed(UdpSocket *socket)
 {
     if (operationalState == State::STOPPING_OPERATION)
         startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
 }
 
-void UdpGCSCmdApp::refreshDisplay() const
+void UdpGCSCsvApp::refreshDisplay() const
 {
     ApplicationBase::refreshDisplay();
 
@@ -302,7 +361,7 @@ void UdpGCSCmdApp::refreshDisplay() const
     getDisplayString().setTagArg("t", 0, buf);
 }
 
-void UdpGCSCmdApp::processPacket(Packet *pk)
+void UdpGCSCsvApp::processPacket(Packet *pk)
 {
     emit(packetReceivedSignal, pk);
     EV_INFO << "Received packet: " << UdpSocket::getReceivedPacketInfo(pk) << endl;
@@ -313,7 +372,7 @@ void UdpGCSCmdApp::processPacket(Packet *pk)
     numReceived++;
 }
 
-void UdpGCSCmdApp::handleStartOperation(LifecycleOperation *operation)
+void UdpGCSCsvApp::handleStartOperation(LifecycleOperation *operation)
 {
     clocktime_t start = std::max(startTime, getClockTime());
     if ((stopTime < CLOCKTIME_ZERO) || (start < stopTime) || (start == stopTime && startTime == stopTime)) {
@@ -322,14 +381,14 @@ void UdpGCSCmdApp::handleStartOperation(LifecycleOperation *operation)
     }
 }
 
-void UdpGCSCmdApp::handleStopOperation(LifecycleOperation *operation)
+void UdpGCSCsvApp::handleStopOperation(LifecycleOperation *operation)
 {
     cancelEvent(selfMsg);
     socket.close();
     delayActiveOperationFinish(par("stopOperationTimeout"));
 }
 
-void UdpGCSCmdApp::handleCrashOperation(LifecycleOperation *operation)
+void UdpGCSCsvApp::handleCrashOperation(LifecycleOperation *operation)
 {
     cancelClockEvent(selfMsg);
     socket.destroy(); // TODO  in real operating systems, program crash detected by OS and OS closes sockets of crashed programs.

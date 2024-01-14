@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-
+// Modified by Reuben on 06/10/2023 to allow recording of SINR to CSV
 
 #ifndef __INET_RADIOMEDIUM_H
 #define __INET_RADIOMEDIUM_H
@@ -20,6 +20,8 @@
 #include "inet/physicallayer/wireless/common/contract/packetlevel/IRadioMedium.h"
 #include "inet/physicallayer/wireless/common/medium/CommunicationLog.h"
 #include "inet/physicallayer/wireless/common/radio/packetlevel/Radio.h"
+
+#include <filesystem>
 
 namespace inet {
 namespace physicallayer {
@@ -40,6 +42,11 @@ class INET_API RadioMedium : public cSimpleModule, public cListener, public IRad
     };
 
   protected:
+    // To save SINR to CSV file (Added 06/10/2023) 
+    std::string m_CSVFilePath;
+    std::string m_CSVFileName;
+    std::filesystem::path m_CSVFullPath;
+
     /** @name Parameters and other models that control the behavior of the radio medium. */
     //@{
     /**

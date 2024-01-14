@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-
+// Modified by Reuben on 06/10/2023 to allow recording of SINR to CSV
 
 #include "inet/physicallayer/wireless/common/medium/RadioMedium.h"
 
@@ -104,6 +104,22 @@ void RadioMedium::initialize(int stage)
         recordReceptionLog = par("recordReceptionLog");
         if (recordTransmissionLog || recordReceptionLog)
             communicationLog.open();
+
+        // Prepare CSV file for recording SINR (Added by Reuben 06/10/2023)
+        m_CSVFilePath = par("csvFilePath").stdstringValue(); // Folder to store CSV file
+        m_CSVFileName = par("csvFileName").stdstringValue(); // File name to store CSV file
+        // First, let's try to create the directory
+        if (!std::filesystem::exists(m_CSVFilePath)){
+            std::error_code err;
+            int dirExist = std::filesystem::create_directory(m_CSVFilePath, err);
+        }
+        std::filesystem::path dir (m_CSVFilePath.c_str());
+        std::filesystem::path file (m_CSVFileName.c_str());
+        m_CSVFullPath = dir / file ;
+        // Write header for Tx CSV
+        std::ofstream out(m_CSVFullPath);
+        out << "SINR," << "Distance," << std::endl;
+        out.close();
     }
     else if (stage == INITSTAGE_LAST)
         EV_INFO << "Initialized " << getCompleteStringRepresentation() << endl;
@@ -377,10 +393,21 @@ const ISnir *RadioMedium::getSNIR(const IRadio *receiver, const ITransmission *t
     if (snir)
         cacheSNIRHitCount++;
     else {
+        // I think SNIR will only be computed once per reception, and subsequent calls for SNIR will use cache
         const IReception *reception = getReception(receiver, transmission);
-        const INoise *noise = getNoise(receiver, transmission);
+        const INoise *noise = getNoise(receiver, transmission); // Note that noise could contain interference
         snir = analogModel->computeSNIR(reception, noise);
         communicationCache->setCachedSNIR(receiver, transmission, snir);
+        // Tap the SNIR to CSV file (Get the Distance and Height from INI file parameters)
+        if (m_CSVFullPath.string().size() != 0){
+            const IListening *listening = getListening(receiver, transmission);
+            const double distance = listening->getStartPosition().distance(transmission->getStartPosition());
+            if (distance > 60) { // Comparing to 6m because inter-UAV distance is 5m 
+                std::ofstream out(m_CSVFullPath, std::ios::app);
+                out << snir->getMin() << "," << distance << std::endl;
+                out.close();
+            }
+        }
     }
     return snir;
 }

@@ -4,10 +4,14 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
+// Date: 30/08/2023
+// Desc: To use custom CSV file to define the packet lengths and Tx time to send each packet. 
+//       CSV file should have two columns, first one for Tx time, second one for packet lengths
+//       The application will cycle through the packets in the CSV file until application stop time
+// Author: Reuben Lim
 
-
-#ifndef __INET_UDPGCSCMDAPP_H
-#define __INET_UDPGCSCMDAPP_H
+#ifndef __INET_UDPBASICCSVAPP_H
+#define __INET_UDPBASICCSVAPP_H
 
 #include <vector>
 #include <filesystem>
@@ -21,7 +25,7 @@ namespace inet {
 /**
  * UDP application. See NED for more info.
  */
-class INET_API UdpGCSCmdApp : public ClockUserModuleMixin<ApplicationBase>, public UdpSocket::ICallback
+class INET_API UdpBasicCsvApp : public ClockUserModuleMixin<ApplicationBase>, public UdpSocket::ICallback
 {
   protected:
     enum SelfMsgKinds { START = 1, SEND, STOP };
@@ -37,7 +41,10 @@ class INET_API UdpGCSCmdApp : public ClockUserModuleMixin<ApplicationBase>, publ
     std::string m_CSVFilePath;
     std::string m_CSVFileName;
     std::filesystem::path m_CSVFullPath;
+    std::string m_PCAPCSVFullPath;
+    std::vector<std::vector<std::string>> pcap_content; // To store PCAP CSV contents, 2D matrix, First column is send interval, Second column is packet size
     int numPacketRecord;
+    int seed;
 
     // state
     UdpSocket socket;
@@ -46,6 +53,7 @@ class INET_API UdpGCSCmdApp : public ClockUserModuleMixin<ApplicationBase>, publ
     // statistics
     int numSent = 0;
     int numReceived = 0;
+    int pcapIndex = 0;
 
   protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
@@ -72,9 +80,11 @@ class INET_API UdpGCSCmdApp : public ClockUserModuleMixin<ApplicationBase>, publ
     virtual void socketErrorArrived(UdpSocket *socket, Indication *indication) override;
     virtual void socketClosed(UdpSocket *socket) override;
 
+    virtual void readPcapCsv(); // To read the CSV file containing send intervals and packet sizes from PCAP
+    
   public:
-    UdpGCSCmdApp() {}
-    ~UdpGCSCmdApp();
+    UdpBasicCsvApp() {}
+    ~UdpBasicCsvApp();
 };
 
 } // namespace inet

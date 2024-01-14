@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-
+// Modified by Reuben on 06/10/2023 to allow recording of SINR to CSV
 
 package inet.physicallayer.wireless.common.medium;
 
@@ -39,6 +39,10 @@ module RadioMedium like IRadioMedium
         // logging parameters
         bool recordTransmissionLog = default(false); // when enabled the medium writes one line per transmission into the communication log file
         bool recordReceptionLog = default(false);    // when enabled the medium writes one line per reception into the communication log file
+
+        // To save SINR to CSV file (Added 06/10/2023)
+        string csvFileName = default("");
+        string csvFilePath = default("");
 
         @class(RadioMedium);
         @display("i=misc/sun");

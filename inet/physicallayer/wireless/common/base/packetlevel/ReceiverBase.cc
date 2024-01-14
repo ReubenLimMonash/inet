@@ -86,6 +86,7 @@ const IReceptionResult *ReceiverBase::computeReceptionResult(const IListening *l
     auto snirInd = packet->addTagIfAbsent<SnirInd>();
     std::string filename = snirInd->getFileName();
     std::string packetName = packet->getName();
+    // std::cout << packetName << std::endl;
     if (filename.compare(0,3,"NaN") != 0) { // If not NaN
         // If previous node is GCS, and the packet name is CNC..., the SINR calculated is for G2U link
         if ((filename.compare(filename.length()-4, 3, "GCS") == 0) && (packetName.compare(0, 3, "CNC") == 0)){

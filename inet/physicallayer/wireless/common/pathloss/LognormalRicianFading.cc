@@ -2,6 +2,7 @@
 * Date: 14/05/2022
 * Author: Reuben Lim Yaw Hui
 * Desc: To implement comprehensive channel model for UAV communications
+* Modified on 06/10/2023 to allow recording of SINR to CSV
 ***************************************************************************/
 
 #include "inet/physicallayer/wireless/common/pathloss/LognormalRicianFading.h"

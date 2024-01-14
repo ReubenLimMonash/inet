@@ -68,8 +68,10 @@ OBJS = \
     $O/inet/applications/tunapp/TunnelApp.o \
     $O/inet/applications/udpapp/UdpBasicApp.o \
     $O/inet/applications/udpapp/UdpBasicBurst.o \
+    $O/inet/applications/udpapp/UdpBasicCsvApp.o \
     $O/inet/applications/udpapp/UdpEchoApp.o \
     $O/inet/applications/udpapp/UdpGCSCmdApp.o \
+    $O/inet/applications/udpapp/UdpGCSCsvApp.o \
     $O/inet/applications/udpapp/UdpSink.o \
     $O/inet/applications/udpapp/UdpSocketIo.o \
     $O/inet/applications/udpapp/UdpVideoStreamClient.o \
@@ -391,8 +393,10 @@ OBJS = \
     $O/inet/linklayer/ieee80211/mac/queue/InProgressFrames.o \
     $O/inet/linklayer/ieee80211/mac/queue/PendingQueue.o \
     $O/inet/linklayer/ieee80211/mac/ratecontrol/AarfRateControl.o \
+    $O/inet/linklayer/ieee80211/mac/ratecontrol/AarfRateControlSingleStream.o \
     $O/inet/linklayer/ieee80211/mac/ratecontrol/OnoeRateControl.o \
     $O/inet/linklayer/ieee80211/mac/ratecontrol/RateControlBase.o \
+    $O/inet/linklayer/ieee80211/mac/ratecontrol/RateControlBaseSingleStream.o \
     $O/inet/linklayer/ieee80211/mac/rateselection/QosRateSelection.o \
     $O/inet/linklayer/ieee80211/mac/rateselection/RateSelection.o \
     $O/inet/linklayer/ieee80211/mac/recipient/CtsPolicy.o \
@@ -501,6 +505,7 @@ OBJS = \
     $O/inet/mobility/single/CircleMobility.o \
     $O/inet/mobility/single/FacingMobility.o \
     $O/inet/mobility/single/GaussMarkovMobility.o \
+    $O/inet/mobility/single/LinearGaussMarkovMobility.o \
     $O/inet/mobility/single/LinearMobility.o \
     $O/inet/mobility/single/MassMobility.o \
     $O/inet/mobility/single/Ns2MotionMobility.o \
